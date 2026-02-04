@@ -16,9 +16,9 @@ if 'current_profile' not in st.session_state:
 @st.cache_data
 def load_data():
 
-    DATA_URL = "https://github.com/WillCollinsDev/SlothKing_Steam_Analyser/releases/download/1.0.0/games_march2025_cleaned.csv"
-
-    df = pd.read_csv(DATA_URL)
+    local_file = 'games_march2025_cleaned.csv'
+    
+    df = pd.read_csv(local_file)
     
     # NEW: Standardize Date Format
     # dayfirst=True handles your dd/mm/yyyy format
