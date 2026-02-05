@@ -15,21 +15,38 @@ if 'current_profile' not in st.session_state:
 # 2. LOAD DATA
 @st.cache_data
 def load_data():
-
-    local_file = 'games_march2025_cleaned.csv'
+    file_path = 'games_march2025_cleaned.csv'
     
-    df = pd.read_csv(local_file)
+    # 1. ONLY load the essential columns (Total reviews = positive + negative)
+    cols = ['name', 'release_date', 'price', 'positive', 'negative', 'tags']
     
-    # NEW: Standardize Date Format
-    # dayfirst=True handles your dd/mm/yyyy format
+    # 2. Optimized loading
+    df = pd.read_csv(
+        file_path, 
+        usecols=cols, 
+        low_memory=False,
+        # Force numerical columns to use less RAM
+        dtype={'positive': 'float32', 'negative': 'float32', 'price': 'str'} 
+    )
+    
+    # 3. Handle dates efficiently
     df['release_date'] = pd.to_datetime(df['release_date'], dayfirst=True, errors='coerce')
     
+    # 4. Create review count and immediately drop 'positive'/'negative' to save RAM
     df['total_reviews'] = df['positive'].fillna(0) + df['negative'].fillna(0)
+    df = df.drop(columns=['positive', 'negative'])
     
+    # 5. Process tags
     def extract_keys(tag_str):
-        try: return [str(k).lower().strip() for k in ast.literal_eval(tag_str).keys()]
-        except: return []
+        try: 
+            return [str(k).lower().strip() for k in ast.literal_eval(tag_str).keys()]
+        except: 
+            return []
+            
     df['tags_list'] = df['tags'].apply(extract_keys)
+    # Drop the original massive 'tags' text column now that we have the list
+    df = df.drop(columns=['tags'])
+    
     return df
 
 df = load_data()
