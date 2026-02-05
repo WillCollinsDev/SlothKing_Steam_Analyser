@@ -17,34 +17,36 @@ if 'current_profile' not in st.session_state:
 def load_data():
     file_path = 'games_march2025_cleaned.csv'
     
-    # 1. Match your new CSV structure exactly
-    # Note: I've added 'genres' since you mentioned it's there now!
+    # 1. Load without strict dtypes to prevent the ValueError crash
     cols = ['release_date', 'price', 'genres', 'positive', 'negative', 'tags']
     
     df = pd.read_csv(
         file_path, 
         usecols=cols, 
-        low_memory=False,
-        dtype={'positive': 'float32', 'negative': 'float32'}
+        low_memory=False
     )
     
-    # 2. Date Cleaning
-    df['release_date'] = pd.to_datetime(df['release_date'], dayfirst=True, errors='coerce')
+    # 2. FORCE conversion to numeric (errors='coerce' turns text/garbage into NaN)
+    # This is the "Safety Net" that prevents the ValueError
+    df['positive'] = pd.to_numeric(df['positive'], errors='coerce').fillna(0)
+    df['negative'] = pd.to_numeric(df['negative'], errors='coerce').fillna(0)
     
     # 3. Success Metrics
-    df['total_reviews'] = df['positive'].fillna(0) + df['negative'].fillna(0)
+    df['total_reviews'] = df['positive'] + df['negative']
     
-    # 4. Tags Processing (The memory-heavy part)
+    # 4. Standard Cleaning
+    df['release_date'] = pd.to_datetime(df['release_date'], dayfirst=True, errors='coerce')
+    
+    # 5. Tags Processing
     def extract_keys(tag_str):
         try: 
-            # This handles the dictionary-style string in your CSV
             return [str(k).lower().strip() for k in ast.literal_eval(tag_str).keys()]
         except: 
             return []
             
     df['tags_list'] = df['tags'].apply(extract_keys)
     
-    # 5. Drop the heavy raw text columns to keep the app under 1GB RAM
+    # 6. Memory Cleanup: Drop the big text columns
     df = df.drop(columns=['tags', 'positive', 'negative'])
     
     return df
