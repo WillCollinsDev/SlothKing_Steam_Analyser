@@ -17,35 +17,35 @@ if 'current_profile' not in st.session_state:
 def load_data():
     file_path = 'games_march2025_cleaned.csv'
     
-    # 1. ONLY load the essential columns (Total reviews = positive + negative)
-    cols = ['name', 'release_date', 'price', 'positive', 'negative', 'tags']
+    # 1. Match your new CSV structure exactly
+    # Note: I've added 'genres' since you mentioned it's there now!
+    cols = ['release_date', 'price', 'genres', 'positive', 'negative', 'tags']
     
-    # 2. Optimized loading
     df = pd.read_csv(
         file_path, 
         usecols=cols, 
         low_memory=False,
-        # Force numerical columns to use less RAM
-        dtype={'positive': 'float32', 'negative': 'float32', 'price': 'str'} 
+        dtype={'positive': 'float32', 'negative': 'float32'}
     )
     
-    # 3. Handle dates efficiently
+    # 2. Date Cleaning
     df['release_date'] = pd.to_datetime(df['release_date'], dayfirst=True, errors='coerce')
     
-    # 4. Create review count and immediately drop 'positive'/'negative' to save RAM
+    # 3. Success Metrics
     df['total_reviews'] = df['positive'].fillna(0) + df['negative'].fillna(0)
-    df = df.drop(columns=['positive', 'negative'])
     
-    # 5. Process tags
+    # 4. Tags Processing (The memory-heavy part)
     def extract_keys(tag_str):
         try: 
+            # This handles the dictionary-style string in your CSV
             return [str(k).lower().strip() for k in ast.literal_eval(tag_str).keys()]
         except: 
             return []
             
     df['tags_list'] = df['tags'].apply(extract_keys)
-    # Drop the original massive 'tags' text column now that we have the list
-    df = df.drop(columns=['tags'])
+    
+    # 5. Drop the heavy raw text columns to keep the app under 1GB RAM
+    df = df.drop(columns=['tags', 'positive', 'negative'])
     
     return df
 
